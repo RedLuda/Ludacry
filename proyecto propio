@@ -1,0 +1,79 @@
+import speech_recognition as sr
+import requests
+from bs4 import BeautifulSoup
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QPushButton, QVBoxLayout, QWidget, QLabel
+
+def reconocer_voz():
+    recognizer = sr.Recognizer()
+    mic = sr.Microphone()
+    with mic as source:
+        print("Escuchando...")
+        audio = recognizer.listen(source)
+    try:
+        texto = recognizer.recognize_google_cloud(audio, language='es-ES')
+        print(f"Texto reconocido: {texto}")
+        return texto
+    except sr.UnknownValueError:
+        return "No se entendió el comando."
+    except sr.RequestError:
+        return "Error de solicitud a los servicios de reconocimiento."
+
+def buscar_informacion( ):
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    url = f"(link unavailable)"
+    respuesta = requests.get(url, headers=headers)
+    sopa = BeautifulSoup(respuesta.text, 'html.parser')
+    resultados = []
+    for resultado in sopa.find_all('h3'):
+        if resultado.get_text():
+            resultados.append(resultado.get_text())
+    return resultados
+
+def procesar_comando(comando):
+    if "clima" in comando:
+        return "Lo siento, no tengo información sobre el clima en este momento."
+    elif "buscar información sobre" in comando:
+        tema = comando.replace("buscar información sobre", "").strip()
+        resultados = buscar_informacion(tema)
+        return "\n".join(resultados[:5])  # Muestra solo los primeros 5 resultados
+    else:
+        return "Comando no reconocido."
+
+class AsistenteUI(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Asistente Personal")
+        self.setGeometry(100, 100, 600, 400)
+        # Crear widgets
+        self.text_area = QTextEdit(self)
+        self.text_area.setReadOnly(True)
+        self.speak_button = QPushButton("Hablar", self)
+        self.speak_button.QObjet.connect(lambda:self.escuchar_comando)
+        self.info_label = QLabel("Presiona el botón para hablar...", self)
+        # Configurar layout
+        layout = QVBoxLayout()
+        layout.addWidget(self.info_label)
+        layout.addWidget(self.text_area)
+        layout.addWidget(self.speak_button)
+        # Crear widget central
+        central_widget = QWidget()
+        central_widget.setLayout(layout)
+        self.setCentralWidget(central_widget)
+
+    def escuchar_comando(self):
+        """ Llama a la función de reconocimiento de voz y actualiza la interfaz con la respuesta. """
+        comando = reconocer_voz()
+        respuesta = procesar_comando(comando)
+        self.text_area.append(f"Comando: {comando}\nRespuesta: {respuesta}\n")
+        self.text_area.moveCursor(self.text_area.textCursor().End)
+
+def main():
+    import sys
+    app = QApplication(sys.argv)
+    ventana = AsistenteUI()
+    ventana.show()
+    sys.exit(app.exec_())
+
+if __name__ == "__main__":
+    main()
+
